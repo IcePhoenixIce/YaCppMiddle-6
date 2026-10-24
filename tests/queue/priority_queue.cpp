@@ -1,3 +1,5 @@
+// Тесты придумала и написала ИИ
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -98,12 +100,14 @@ TEST(PriorityQueueTest, BoundedConfigWithoutCapacityThrows) {
     std::unordered_map<dispatcher::TaskPriority, dispatcher::queue::QueueOptions> options{
         {dispatcher::TaskPriority::High, {true, std::nullopt}},
     };
-    EXPECT_THROW(dispatcher::queue::PriorityQueue(options), std::invalid_argument);
+    auto construct = [&]() { dispatcher::queue::PriorityQueue queue(options); };
+    EXPECT_THROW(construct(), std::invalid_argument);
 }
 
 TEST(PriorityQueueTest, EmptyConfigThrows) {
     std::unordered_map<dispatcher::TaskPriority, dispatcher::queue::QueueOptions> options{};
-    EXPECT_THROW(dispatcher::queue::PriorityQueue(options), std::invalid_argument);
+    auto construct = [&]() { dispatcher::queue::PriorityQueue queue(options); };
+    EXPECT_THROW(construct(), std::invalid_argument);
 }
 
 TEST(PriorityQueueTest, ConcurrentPushAndPop) {

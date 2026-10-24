@@ -10,7 +10,7 @@ namespace dispatcher::queue {
 class BoundedQueue : public IQueue {
     // здесь ваш код
     std::deque<std::function<void()>> tasks_;
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     std::condition_variable not_full_;
     std::condition_variable not_empty_;
     int capacity_;

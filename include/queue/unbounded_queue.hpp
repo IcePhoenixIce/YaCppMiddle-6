@@ -9,10 +9,10 @@ namespace dispatcher::queue {
 class UnboundedQueue : public IQueue {
     // здесь ваш код
     std::deque<std::function<void()>> tasks_;
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
 
 public:
-    explicit UnboundedQueue(int capacity);
+    explicit UnboundedQueue();
 
     void push(std::function<void()> task) override;
 

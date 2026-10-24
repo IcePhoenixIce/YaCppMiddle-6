@@ -9,9 +9,7 @@ namespace dispatcher::queue {
 
 // здесь ваш код
 
-UnboundedQueue::UnboundedQueue(int capacity) {
-    (void)capacity;
-}
+UnboundedQueue::UnboundedQueue() = default;
 
 void UnboundedQueue::push(std::function<void()> task) {
     std::lock_guard lock(mutex_);
@@ -35,4 +33,4 @@ bool UnboundedQueue::empty() const {
 
 UnboundedQueue::~UnboundedQueue() = default;
 
-} // namespace dispatcher::queue
+}  // namespace dispatcher::queue

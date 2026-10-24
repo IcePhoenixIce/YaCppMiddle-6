@@ -1,3 +1,5 @@
+// Тесты придумала и написала ИИ
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -11,6 +13,8 @@
 
 #include "task_dispatcher.hpp"
 
+using namespace dispatcher;
+
 TEST(BasicCheck, SimpleCheck) { EXPECT_EQ(1 + 1, 2); }
 
 // здесь ваш код
@@ -20,8 +24,7 @@ TEST(TaskDispatcherTest, ExecutesScheduledTasks) {
     std::atomic<int> executed{0};
     constexpr int task_count = 100;
     for (int i = 0; i < task_count; ++i) {
-        dispatcher.schedule(TaskPriority::Normal,
-                            [&executed] { executed.fetch_add(1, std::memory_order_relaxed); });
+        dispatcher.schedule(TaskPriority::Normal, [&executed] { executed.fetch_add(1, std::memory_order_relaxed); });
     }
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
     while (executed.load(std::memory_order_acquire) < task_count && std::chrono::steady_clock::now() < deadline) {
@@ -63,11 +66,14 @@ TEST(TaskDispatcherTest, HighPriorityTasksExecuteFirst) {
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
     while (true) {
-        std::lock_guard lock(mutex);
-        if (order.size() == 6 || std::chrono::steady_clock::now() >= deadline) {
+        bool done = false;
+        {
+            std::lock_guard lock(mutex);
+            done = order.size() == 6 || std::chrono::steady_clock::now() >= deadline;
+        }
+        if (done) {
             break;
         }
-        lock.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     EXPECT_EQ(order, (std::vector<int>{1, 1, 1, 0, 0, 0}));
@@ -92,8 +98,7 @@ TEST(TaskDispatcherTest, TaskExceptionDoesNotKillWorker) {
     TaskDispatcher dispatcher(1);
     std::atomic<int> executed{0};
     dispatcher.schedule(TaskPriority::Normal, [] { throw std::runtime_error("task failure"); });
-    dispatcher.schedule(TaskPriority::Normal,
-                        [&executed] { executed.fetch_add(1, std::memory_order_relaxed); });
+    dispatcher.schedule(TaskPriority::Normal, [&executed] { executed.fetch_add(1, std::memory_order_relaxed); });
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
     while (executed.load(std::memory_order_acquire) < 1 && std::chrono::steady_clock::now() < deadline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
