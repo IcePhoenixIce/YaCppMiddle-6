@@ -23,13 +23,14 @@ PriorityQueue::PriorityQueue(const std::unordered_map<TaskPriority, QueueOptions
 }
 
 void PriorityQueue::push(TaskPriority priority, std::function<void()> task) {
-    std::lock_guard lock(mutex_);
+    std::unique_lock lock(mutex_);
     auto it = queues_.find(priority);
     if (it == queues_.end()) {
         throw std::invalid_argument("No queue configured for given priority");
     }
     it->second->push(std::move(task));
     ++total_tasks_;
+    lock.unlock();
     has_tasks_.notify_one();
 }
 
@@ -47,8 +48,9 @@ std::optional<std::function<void()>> PriorityQueue::pop() {
 }
 
 void PriorityQueue::shutdown() {
-    std::lock_guard lock(mutex_);
+    std::unique_lock lock(mutex_);
     shutdown_ = true;
+    lock.unlock();
     has_tasks_.notify_all();
 }
 
