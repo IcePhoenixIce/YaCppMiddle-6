@@ -65,7 +65,7 @@ TEST(UnboundedQueueTest, ConcurrentPushAndPop) {
     dispatcher::queue::UnboundedQueue queue;
     constexpr int task_count = 1000;
     std::atomic<int> executed{0};
-    std::vector<std::thread> threads;
+    std::vector<std::jthread> threads;
     for (int t = 0; t < 2; ++t) {
         threads.emplace_back([&] {
             for (int i = 0; i < task_count / 2; ++i) {
@@ -74,7 +74,7 @@ TEST(UnboundedQueueTest, ConcurrentPushAndPop) {
         });
     }
     for (auto &thread : threads) {
-        thread.join();
+        thread.join();  // ждем, пока все пушеры завершат push
     }
     while (auto task = queue.try_pop()) {
         (*task)();

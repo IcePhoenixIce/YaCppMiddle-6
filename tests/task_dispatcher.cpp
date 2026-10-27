@@ -110,7 +110,7 @@ TEST(TaskDispatcherTest, ConcurrentScheduling) {
     TaskDispatcher dispatcher(4);
     std::atomic<int> executed{0};
     constexpr int task_count = 400;
-    std::vector<std::thread> schedulers;
+    std::vector<std::jthread> schedulers;
     for (int t = 0; t < 4; ++t) {
         schedulers.emplace_back([&] {
             for (int i = 0; i < task_count / 4; ++i) {
@@ -118,9 +118,6 @@ TEST(TaskDispatcherTest, ConcurrentScheduling) {
                                     [&executed] { executed.fetch_add(1, std::memory_order_relaxed); });
             }
         });
-    }
-    for (auto &thread : schedulers) {
-        thread.join();
     }
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
     while (executed.load(std::memory_order_acquire) < task_count && std::chrono::steady_clock::now() < deadline) {

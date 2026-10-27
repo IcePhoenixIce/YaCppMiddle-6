@@ -53,28 +53,28 @@ TEST(PriorityQueueTest, HighPriorityPoppedFirst) {
 TEST(PriorityQueueTest, PopBlocksUntilTaskArrives) {
     auto queue = MakeDefaultQueue();
     std::atomic<bool> popped{false};
-    std::thread waiter([&] {
+    std::jthread waiter([&] {
         auto task = queue.pop();
         popped.store(task.has_value(), std::memory_order_release);
     });
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_FALSE(popped.load(std::memory_order_acquire));
     queue.push(dispatcher::TaskPriority::Normal, [] {});
-    waiter.join();
+    waiter.join();  // ждем, пока waiter проснется и запишет popped=true
     EXPECT_TRUE(popped.load(std::memory_order_acquire));
 }
 
 TEST(PriorityQueueTest, ShutdownWakesBlockedPop) {
     auto queue = MakeDefaultQueue();
     std::atomic<bool> finished{false};
-    std::thread waiter([&] {
+    std::jthread waiter([&] {
         auto task = queue.pop();
         finished.store(!task.has_value(), std::memory_order_release);
     });
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_FALSE(finished.load(std::memory_order_acquire));
     queue.shutdown();
-    waiter.join();
+    waiter.join();  // ждем, пока waiter проснется и запишет finished=true
     EXPECT_TRUE(finished.load(std::memory_order_acquire));
 }
 
@@ -114,7 +114,7 @@ TEST(PriorityQueueTest, ConcurrentPushAndPop) {
     auto queue = MakeDefaultQueue();
     constexpr int task_count = 1000;
     std::atomic<int> executed{0};
-    std::vector<std::thread> threads;
+    std::vector<std::jthread> threads;
     for (int t = 0; t < 2; ++t) {
         threads.emplace_back([&] {
             for (int i = 0; i < task_count / 2; ++i) {
@@ -132,9 +132,6 @@ TEST(PriorityQueueTest, ConcurrentPushAndPop) {
                 }
             }
         });
-    }
-    for (auto &thread : threads) {
-        thread.join();
     }
     queue.shutdown();
     while (auto task = queue.pop()) {

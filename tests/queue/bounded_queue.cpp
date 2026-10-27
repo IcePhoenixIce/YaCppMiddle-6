@@ -55,7 +55,7 @@ TEST(BoundedQueueTest, PushBlocksWhenFull) {
     dispatcher::queue::BoundedQueue queue(1);
     queue.push([] {});
     std::atomic<bool> pushed{false};
-    std::thread pusher([&] {
+    std::jthread pusher([&] {
         queue.push([] {});
         pushed.store(true, std::memory_order_release);
     });
@@ -63,16 +63,16 @@ TEST(BoundedQueueTest, PushBlocksWhenFull) {
     EXPECT_FALSE(pushed.load(std::memory_order_acquire));
     auto task = queue.try_pop();
     ASSERT_TRUE(task.has_value());
-    pusher.join();
+    pusher.join();  // ждем, пока pusher проснется и запишет pushed=true
     EXPECT_TRUE(pushed.load(std::memory_order_acquire));
 }
 
 TEST(BoundedQueueTest, PushUnblocksAfterPop) {
     dispatcher::queue::BoundedQueue queue(1);
     queue.push([] {});
-    std::thread pusher([&] { queue.push([] {}); });
+    std::jthread pusher([&] { queue.push([] {}); });
     queue.try_pop();
-    pusher.join();
+    pusher.join();  // ждем, пока pusher завершит push и элемент окажется в очереди
     EXPECT_TRUE(queue.try_pop().has_value());
 }
 
@@ -81,8 +81,8 @@ TEST(BoundedQueueTest, ConcurrentPushAndPop) {
     constexpr int task_count = 1000;
     std::atomic<int> pushed{0};
     std::atomic<int> executed{0};
-    std::vector<std::thread> pushers;
-    std::vector<std::thread> poppers;
+    std::vector<std::jthread> pushers;
+    std::vector<std::jthread> poppers;
     for (int t = 0; t < 2; ++t) {
         pushers.emplace_back([&] {
             for (int i = 0; i < task_count / 2; ++i) {
@@ -104,10 +104,10 @@ TEST(BoundedQueueTest, ConcurrentPushAndPop) {
         });
     }
     for (auto &thread : pushers) {
-        thread.join();
+        thread.join();  // ждем, пока все пушеры завершат push
     }
     for (auto &thread : poppers) {
-        thread.join();
+        thread.join();  // ждем, пока все попперы завершат pop
     }
     while (auto task = queue.try_pop()) {
         (*task)();

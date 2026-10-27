@@ -29,19 +29,17 @@ void PriorityQueue::push(TaskPriority priority, std::function<void()> task) {
         throw std::invalid_argument("No queue configured for given priority");
     }
     it->second->push(std::move(task));
-    total_tasks_.fetch_add(1, std::memory_order_release);
+    ++total_tasks_;
     has_tasks_.notify_one();
 }
 
 std::optional<std::function<void()>> PriorityQueue::pop() {
     std::unique_lock lock(mutex_);
-    has_tasks_.wait(lock, [this] {
-        return shutdown_.load(std::memory_order_acquire) || total_tasks_.load(std::memory_order_acquire) > 0;
-    });
+    has_tasks_.wait(lock, [this] { return shutdown_ || total_tasks_ > 0; });
     for (auto it = queues_.begin(); it != queues_.end(); ++it) {
         auto task = it->second->try_pop();
         if (task) {
-            total_tasks_.fetch_sub(1, std::memory_order_release);
+            --total_tasks_;
             return task;
         }
     }
@@ -50,7 +48,7 @@ std::optional<std::function<void()>> PriorityQueue::pop() {
 
 void PriorityQueue::shutdown() {
     std::lock_guard lock(mutex_);
-    shutdown_.store(true, std::memory_order_release);
+    shutdown_ = true;
     has_tasks_.notify_all();
 }
 
