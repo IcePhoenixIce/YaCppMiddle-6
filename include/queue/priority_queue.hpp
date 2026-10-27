@@ -21,8 +21,7 @@ class PriorityQueue {
     std::mutex mutex_;
     std::condition_variable has_tasks_;
     std::atomic<bool> shutdown_{false};
-
-    bool HasTasksLocked() const;
+    std::atomic<std::size_t> total_tasks_{0};
 
 public:
     explicit PriorityQueue(const std::unordered_map<TaskPriority, QueueOptions> &options);
